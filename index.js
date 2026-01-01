@@ -1,41 +1,43 @@
-const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    delay,
-    makeCacheableSignalKeyStore
-} = require("@whiskeysockets/baileys");
+const express = require('express');
+const { default: makeWASocket, useMultiFileAuthState, delay } = require("@whiskeysockets/baileys");
 const pino = require("pino");
-const fs = require("fs");
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('session');
-
-    const sock = makeWASocket({
-        auth: state,
-        printQRInTerminal: false, // QR අවශ්‍ය නැති නිසා false දමන්න
-        logger: pino({ level: "silent" })
-    });
-
-    // මෙතනට ඔබේ දුරකථන අංකය ඇතුළත් කරන්න (උදා: 947XXXXXXXX)
-    let phoneNumber = "947XXXXXXXX"; 
-
-    if (!sock.authState.creds.registered) {
-        await delay(1500);
-        const code = await sock.requestPairingCode(phoneNumber);
-        console.log(`\nYOUR PAIRING CODE: ${code}\n`);
+app.get('/', async (req, res) => {
+    let num = req.query.number;
+    if (!num) {
+        return res.send(`
+            <html>
+                <body style="font-family:sans-serif; text-align:center; padding-top:50px;">
+                    <h2>WhatsApp Pairing Code Generator</h2>
+                    <form action="/">
+                        <input type="text" name="number" placeholder="947XXXXXXXX" required>
+                        <button type="submit">Get Code</button>
+                    </form>
+                </body>
+            </html>
+        `);
     }
 
-    sock.ev.on("creds.update", saveCreds);
+    try {
+        const { state } = await useMultiFileAuthState('session');
+        const sock = makeWASocket({
+            auth: state,
+            printQRInTerminal: false,
+            logger: pino({ level: "silent" })
+        });
 
-    sock.ev.on("connection.update", (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === "close") {
-            console.log("සම්බන්ධතාවය බිඳ වැටුණි, නැවත උත්සාහ කරයි...");
-            startBot();
-        } else if (connection === "open") {
-            console.log("Bot සාර්ථකව සම්බන්ධ විය!");
+        if (!sock.authState.creds.registered) {
+            await delay(1500);
+            const code = await sock.requestPairingCode(num);
+            res.send(`<h1>Your Pairing Code: <span style="color:blue;">${code}</span></h1><p>Enter this in your WhatsApp Linked Devices section.</p>`);
+        } else {
+            res.send("<h1>Already Linked!</h1>");
         }
-    });
-}
+    } catch (err) {
+        res.send("Error: " + err.message);
+    }
+});
 
-startBot();
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
