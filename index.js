@@ -1,43 +1,125 @@
-const express = require('express');
-const { default: makeWASocket, useMultiFileAuthState, delay } = require("@whiskeysockets/baileys");
-const pino = require("pino");
-const app = express();
-const PORT = process.env.PORT || 3000;
+const qrcode = require("qrcode-terminal")
+const fs = require('fs')
+const pino = require('pino')
+const { default: makeWASocket, Browsers, delay, useMultiFileAuthState, BufferJSON, fetchLatestBaileysVersion, PHONENUMBER_MCC, DisconnectReason, makeInMemoryStore, jidNormalizedUser, makeCacheableSignalKeyStore } = require("@whiskeysockets/baileys")
+const Pino = require("pino")
+const NodeCache = require("node-cache")
+const chalk = require("chalk")
+const readline = require("readline")
+const { parsePhoneNumber } = require("libphonenumber-js")
 
-app.get('/', async (req, res) => {
-    let num = req.query.number;
-    if (!num) {
-        return res.send(`
-            <html>
-                <body style="font-family:sans-serif; text-align:center; padding-top:50px;">
-                    <h2>WhatsApp Pairing Code Generator</h2>
-                    <form action="/">
-                        <input type="text" name="number" placeholder="947XXXXXXXX" required>
-                        <button type="submit">Get Code</button>
-                    </form>
-                </body>
-            </html>
-        `);
-    }
 
-    try {
-        const { state } = await useMultiFileAuthState('session');
-        const sock = makeWASocket({
-            auth: state,
-            printQRInTerminal: false,
-            logger: pino({ level: "silent" })
-        });
+let phoneNumber = "94726800969"
 
-        if (!sock.authState.creds.registered) {
-            await delay(1500);
-            const code = await sock.requestPairingCode(num);
-            res.send(`<h1>Your Pairing Code: <span style="color:blue;">${code}</span></h1><p>Enter this in your WhatsApp Linked Devices section.</p>`);
-        } else {
-            res.send("<h1>Already Linked!</h1>");
+const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
+const useMobile = process.argv.includes("--mobile")
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+const question = (text) => new Promise((resolve) => rl.question(text, resolve))
+
+
+  async function qr() {
+//------------------------------------------------------
+let { version, isLatest } = await fetchLatestBaileysVersion()
+const {  state, saveCreds } =await useMultiFileAuthState(`./sessions`)
+    const msgRetryCounterCache = new NodeCache() // for retry message, "waiting message"
+    const XeonBotInc = makeWASocket({
+        logger: pino({ level: 'silent' }),
+        printQRInTerminal: !pairingCode, // popping up QR in terminal log
+      browser: Browsers.windows('Firefox'), // for this issues https://github.com/WhiskeySockets/Baileys/issues/328
+     auth: {
+         creds: state.creds,
+         keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
+      },
+      markOnlineOnConnect: true, // set false for offline
+      generateHighQualityLinkPreview: true, // make high preview link
+      getMessage: async (key) => {
+         let jid = jidNormalizedUser(key.remoteJid)
+         let msg = await store.loadMessage(jid, key.id)
+
+         return msg?.message || ""
+      },
+      msgRetryCounterCache, // Resolve waiting messages
+      defaultQueryTimeoutMs: undefined, // for this issues https://github.com/WhiskeySockets/Baileys/issues/276
+   })
+
+
+    // login use pairing code
+   // source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L61
+   if (pairingCode && !XeonBotInc.authState.creds.registered) {
+      if (useMobile) throw new Error('Cannot use pairing code with mobile api')
+
+      let phoneNumber
+      if (!!phoneNumber) {
+         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+
+         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
+            console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +94726800969")))
+            process.exit(0)
+         }
+      } else {
+         phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +94726800969 : `)))
+         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+
+         // Ask again when entering the wrong number
+         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
+            console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +94726800969")))
+
+            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +94726800969 : `)))
+            phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+            rl.close()
+         }
+      }
+
+      setTimeout(async () => {
+         let code = await XeonBotInc.requestPairingCode(phoneNumber)
+         code = code?.match(/.{1,4}/g)?.join("-") || code
+         console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
+      }, 3000)
+   }
+//------------------------------------------------------
+    XeonBotInc.ev.on("connection.update",async  (s) => {
+        const { connection, lastDisconnect } = s
+        if (connection == "open") {
+            await delay(1000 * 10)
+            await XeonBotInc.sendMessage(XeonBotInc.user.id, { text: `🪀Support/Contact Developer\n\n\n⎆DONETS : 94726800969 \n\n⎆YOUTUBE: https://youtube.com/@NIMESHA_editz\n\n⎆Telegram Group: https://t.me/mjsicgroupsl\n\n⎆TELEGRAM Chat: https://t.me/+nimabotsnew\n\n⎆WHATSAPP Gc: https://chat.whatsapp.com/HLBP338VvUC0ms5NqCkSSO\n\n⎆WHATSAPP Cc: https://whatsapp.com/channel/0029Vb68g1c3LdQLQDkbAQ3M\n\n⎆GITHUB : https://github.com/nimesha206/\n\n⎆WHATSAPP Pm: Wa.me/94726800969\n\n⎆FACEBOOK: https://www.facebook.com/share/17fpwCVgMK/\n\n⎆CREATED BY NIMESHA MADHUSHAN\n\n⎆FOR CHUTI BOT\n\n\n` });
+            let sessionXeon = fs.readFileSync('./sessions/creds.json');
+            await delay(1000 * 2) 
+             const xeonses = await  XeonBotInc.sendMessage(XeonBotInc.user.id, { document: sessionXeon, mimetype: `application/json`, fileName: `creds.json` })
+               XeonBotInc.groupAcceptInvite("Kjm8rnDFcpb04gQNSTbW2d");
+             await XeonBotInc.sendMessage(XeonBotInc.user.id, { text: `⚠️Do not share this file with anybody⚠️\n
+┌─❖
+│ Ohayo 😽
+└┬❖  
+┌┤✑  Thanks for using NIMA PAIR codes
+│└────────────┈ ⳹        
+│©2025-2026 CHUTIYA 
+└─────────────────┈ ⳹\n\n ` }, {quoted: xeonses});
+              await delay(1000 * 2) 
+              process.exit(0)
         }
-    } catch (err) {
-        res.send("Error: " + err.message);
-    }
-});
+        if (
+            connection === "close" &&
+            lastDisconnect &&
+            lastDisconnect.error &&
+            lastDisconnect.error.output.statusCode != 401
+        ) {
+            qr()
+        }
+    })
+    XeonBotInc.ev.on('creds.update', saveCreds)
+    XeonBotInc.ev.on("messages.upsert",  () => { })
+}
+qr()
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+process.on('uncaughtException', function (err) {
+let e = String(err)
+if (e.includes("conflict")) return
+if (e.includes("not-authorized")) return
+if (e.includes("Socket connection timeout")) return
+if (e.includes("rate-overlimit")) return
+if (e.includes("Connection Closed")) return
+if (e.includes("Timed Out")) return
+if (e.includes("Value not found")) return
+console.log('Caught exception: ', err)
+})

@@ -1,18 +1,35 @@
 {
-  "name": "wa-web-pair",
+  "name": "Nima-PairCode",
   "version": "1.0.0",
-  "description": "WhatsApp Pairing Web App",
+  "description": "Connect Whatsapp With Baileys Code Pairing",
   "main": "index.js",
   "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
   },
+  "keywords": [
+    "baileys",
+    "code-pairing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nimesha206/CHUTI_PAIR.git"
+  },
+  "author": "DGXeon",
+  "license": "ISC",
   "dependencies": {
+    "@adiwajshing/keyed-db": "^0.2.4",
+    "@colors/colors": "1.5.0",
     "@whiskeysockets/baileys": "^6.6.0",
-    "express": "^4.18.2",
-    "pino": "^8.19.0",
+    "cfonts": "~2.10.0",
+    "chalk": "~4.1.0",
+    "fs-extra": "^11.1.1",
+    "path": "^0.12.7",
+    "pino": "^8.1.0",
     "qrcode-terminal": "^0.12.0"
   },
-  "engines": {
-    "node": ">=18.x"
-  }
+  "bugs": {
+    "url": "https://github.com/nimesha206/CHUTI_PAIR/issues"
+  },
+  "homepage": "https://github.com/nimesha206/CHUTI_PAIR#readme"
 }

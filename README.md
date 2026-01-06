@@ -1,2 +1,2 @@
-# CHUTI_PAIR
-CREATED BY NIMESHA MADHUSHAN
+# Nima-PairCode
+Pair code generator for whatsapp bots
